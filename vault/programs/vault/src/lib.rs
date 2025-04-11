@@ -61,7 +61,7 @@ pub struct Deposit<'info> {
     )]
     pub vault_state: Account<'info, VaultState>,
 
-    #[account(
+    #[account(mut,
         seeds = [b"vault", user.key().as_ref()],
         bump,
     )]
@@ -111,6 +111,10 @@ pub struct VaultState {
     pub state_bump: u8,
 }
 
+impl Space for VaultState {
+    const INIT_SPACE: usize = 8 + 1 + 1;
+}
+
 #[derive(Accounts)]
 pub struct CloseAccount<'info> {
     #[account(mut)]
@@ -118,7 +122,7 @@ pub struct CloseAccount<'info> {
 
     #[account(
         mut,
-        seeds = [b"vault", vault_state.key().as_ref()],
+        seeds = [b"vault", user.key().as_ref()],
         bump = vault_state.vault_bump,
     )]
     pub vault: SystemAccount<'info>,
@@ -132,10 +136,6 @@ pub struct CloseAccount<'info> {
     pub vault_state: Account<'info, VaultState>,
 
     pub system_program: Program<'info, System>,
-}
-
-impl Space for VaultState {
-    const INIT_SPACE: usize = 8 + 1 + 1;
 }
 
 impl<'info> CloseAccount<'info> {
