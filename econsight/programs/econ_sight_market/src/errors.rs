@@ -2,15 +2,28 @@ use anchor_lang::prelude::*;
 
 #[error_code]
 pub enum SomeError {
+    #[msg("The market is not yet resolved.")]
+    MarketNotResolved,
+
     #[msg("The market is already resolved.")]
     MarketAlreadyResolved,
 
-    #[msg("The market is not resolved yet.")]
-    MarketNotResolved,
-
-    #[msg("No winner has been set for this market.")]
+    #[msg("No winner set yet.")]
     NoWinnerYet,
 
-    #[msg("User tried to claim with the wrong outcome side.")]
+    #[msg("You tried to claim the wrong side.")]
     WrongSide,
+
+    #[msg("Attempted to create or interact with an expired market.")]
+    MarketExpired,
+
+    #[msg("Attempted to resolve the market before expiry.")]
+    MarketNotExpiredYet,
+
+    #[msg("You have insufficient funds to complete this transaction.")]
+    InsufficientFunds,
+
+    #[msg("Math error (overflow/underflow).")]
+    MathError,
+
 }

@@ -1,9 +1,10 @@
 use anchor_lang::prelude::*;
 use anchor_spl::token::{Mint, Token, TokenAccount};
 use crate::state::Market;
+use crate::events::MarketCreated;
 
 #[derive(Accounts)]
-#[instruction(question: String, expiry_timestamp: i64)]
+#[instruction(question: String, expiry_timestamp: i64, fee_bps: u16, treasury: Pubkey)]
 pub struct CreateMarket<'info> {
     #[account(
         init,
@@ -25,7 +26,7 @@ pub struct CreateMarket<'info> {
         mint::decimals = 6,
         mint::authority = market
     )]
-    pub yes_mint: Account<'info, Mint>,//The market creates brand-new SPL mints for “YES” and “NO” outcome tokens.in AMM mint_x and mint_y are already-existing tokens (e.g., USDC & SOL)
+    pub yes_mint: Account<'info, Mint>,
 
     #[account(
         init,
@@ -45,13 +46,14 @@ pub struct CreateMarket<'info> {
         token::mint = usdc_mint,
         token::authority = market
     )]
-    pub vault: Account<'info, TokenAccount>,//unlike in AMM, here vault is not an ATA, it's named PDA for easy look-ups: “give me ['vault', market].” (in amm (config, mint_x))
+    pub vault: Account<'info, TokenAccount>,
 
-    /// CHECK: reference to official USDC mint (we won't create USDC mint ourselves)
+    /// CHECK: reference to official USDC mint
     pub usdc_mint: UncheckedAccount<'info>,
 
     #[account(mut)]
     pub user: Signer<'info>,
+
     pub system_program: Program<'info, System>,
     pub token_program: Program<'info, Token>,
 }
@@ -60,8 +62,18 @@ pub fn create_market(
     ctx: Context<CreateMarket>,
     question: String,
     expiry_timestamp: i64,
+    fee_bps: u16,
+    treasury: Pubkey,
 ) -> Result<()> {
+    // Basic validation: expiry must be in the future
+    let current_time = Clock::get()?.unix_timestamp;
+    require!(
+        expiry_timestamp > current_time,
+        crate::errors::SomeError::MarketExpired
+    );
+
     let market_account = &mut ctx.accounts.market;
+    let bump = ctx.bumps.market;
 
     market_account.question = question;
     market_account.expiry_timestamp = expiry_timestamp;
@@ -71,12 +83,20 @@ pub fn create_market(
     market_account.authority = ctx.accounts.user.key();
     market_account.resolved = false;
     market_account.winner = None;
-
-    // Store the PDA bump so we can re-derive and sign later
-    let bump = ctx.bumps.market;
-
-
     market_account.bump = bump;
+
+    // Additional fields
+    market_account.fee_bps = fee_bps;
+    market_account.treasury = treasury;
+
+    // Emit an event for front-end
+    emit!(MarketCreated {
+        market_key: market_account.key(),
+        question: market_account.question.clone(),
+        expiry_timestamp: market_account.expiry_timestamp,
+        fee_bps,
+        treasury,
+    });
 
     Ok(())
 }

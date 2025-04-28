@@ -1,13 +1,15 @@
-// programs/econ_sight_market/src/lib.rs
 #![allow(unexpected_cfgs)]
 use anchor_lang::prelude::*;
 
 pub mod instructions;
 pub mod state;
-pub use instructions::*;
 pub mod errors;
-use crate::state::{Market, OutcomeSide};
-// program ID
+pub mod events;
+
+use instructions::*;
+use state::{Market, OutcomeSide};
+
+// Program ID
 declare_id!("4n3PUjjcH54EpLfH3qbKofM2G5dGAYcpXo4vbeX3769a");
 
 #[program]
@@ -18,8 +20,10 @@ pub mod econ_sight_market {
         ctx: Context<CreateMarket>,
         question: String,
         expiry_timestamp: i64,
+        fee_bps: u16,
+        treasury: Pubkey,
     ) -> Result<()> {
-        crate::create::create_market(ctx, question, expiry_timestamp)
+        create::create_market(ctx, question, expiry_timestamp, fee_bps, treasury)
     }
 
     pub fn buy_outcome(
@@ -27,14 +31,17 @@ pub mod econ_sight_market {
         outcome_side: OutcomeSide,
         amount: u64,
     ) -> Result<()> {
-        crate::purchase_outcome::buy_outcome(ctx, outcome_side, amount)
+        purchase_outcome::buy_outcome(ctx, outcome_side, amount)
     }
 
-    pub fn resolve_market(ctx: Context<ResolveMarket>) -> Result<()> {
-        crate::resolve::resolve_market(ctx)
+    pub fn resolve_market(
+        ctx: Context<ResolveMarket>,
+        winner_side: OutcomeSide
+    ) -> Result<()> {
+        resolve::resolve_market(ctx, winner_side)
     }
 
     pub fn claim_rewards(ctx: Context<ClaimRewards>) -> Result<()> {
-        crate::claim_rewards::claim_rewards(ctx)
+        claim_rewards::claim_rewards(ctx)
     }
-} // ← no trailing comma
+}
