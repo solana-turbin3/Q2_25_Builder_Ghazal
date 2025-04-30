@@ -5,6 +5,7 @@ pub mod instructions;
 pub mod state;
 pub mod errors;
 pub mod events;
+mod utils;
 
 use instructions::*;
 use state::{Market, OutcomeSide};
@@ -22,8 +23,10 @@ pub mod econ_sight_market {
         expiry_timestamp: i64,
         fee_bps: u16,
         treasury: Pubkey,
+        b_value_scaled: u64,  
     ) -> Result<()> {
-        create::create_market(ctx, question, expiry_timestamp, fee_bps, treasury)
+        let default_b = 1_000_000u64;
+        create::create_market(ctx, question, expiry_timestamp, fee_bps, treasury, b_value_scaled)
     }
 
     pub fn buy_outcome(

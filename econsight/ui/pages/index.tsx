@@ -1,15 +1,64 @@
-import { AnchorProvider, Program, web3 } from "@project-serum/anchor";
-import idl from "../../idl/econ_sight_market.json"; // If you have an IDL
+import { useEffect, useState } from "react";
+import { getProgram } from "../utils/anchorConnection";
+import { PublicKey } from "@solana/web3.js";
+import Link from "next/link";
 
-const programID = new web3.PublicKey("4n3PUjjcH54EpLfH3qbKofM2G5dGAYcpXo4vbeX3769a"); // Your program ID
+interface MarketAccount {
+  pubkey: PublicKey;
+  account: {
+    question: string;
+    expiryTimestamp: number;
+    resolved: boolean;
+    winner: any;
+    feeBps: number;
+    treasury: PublicKey;
+    // ...
+  };
+}
 
-// Example function to get the anchor Program
-function getProgram() {
-  const connection = new web3.Connection(process.env.NEXT_PUBLIC_SOLANA_RPC_URL!);
-  const provider = new AnchorProvider(
-    connection,
-    window.solana,   // or wallet adapter
-    { preflightCommitment: "processed" }
+export default function Home() {
+  const [markets, setMarkets] = useState<MarketAccount[]>([]);
+
+  useEffect(() => {
+    (async () => {
+      const program = getProgram();
+      // fetch all Market PDAs
+      const marketPDAs = await program.account.market.all();
+      // sort them by creation or show as-is
+      setMarkets(marketPDAs as unknown as MarketAccount[]);
+    })();
+  }, []);
+
+  return (
+    <div>
+      <h3>All Markets</h3>
+      <Link href="/create-market" legacyBehavior>
+        <a>Create New Market</a>
+      </Link>
+      <table border={1} cellPadding={5} style={{ marginTop: 10 }}>
+        <thead>
+          <tr>
+            <th>Question</th>
+            <th>Expiry</th>
+            <th>Resolved?</th>
+            <th>Action</th>
+          </tr>
+        </thead>
+        <tbody>
+          {markets.map((m) => (
+            <tr key={m.pubkey.toBase58()}>
+              <td>{m.account.question}</td>
+              <td>{new Date(Number(m.account.expiryTimestamp) * 1000).toLocaleString()}</td>
+              <td>{m.account.resolved ? "Yes" : "No"}</td>
+              <td>
+                <Link href={`/${m.pubkey.toBase58()}`} legacyBehavior>
+                  <a>View</a>
+                </Link>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
   );
-  return new Program(idl, programID, provider);
 }

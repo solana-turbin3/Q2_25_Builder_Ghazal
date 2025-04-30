@@ -1,45 +1,34 @@
 use anchor_lang::prelude::*;
-use anchor_spl::token::{self, Mint, Token, TokenAccount};
+use anchor_spl::token::{
+    self, Token, TokenAccount, Mint, Transfer, MintTo,
+};
 use crate::state::{Market, OutcomeSide};
 use crate::errors::SomeError;
 use crate::events::OutcomeBought;
+use crate::utils::lmsr::{lmsr_buy_cost, safe_f64_to_u64, checked_fee_amount};
 
 #[derive(Accounts)]
 pub struct BuyOutcome<'info> {
     #[account(
         mut,
-        seeds = [
-            b"market",
-            market.authority.as_ref()
-        ],
-        bump = market.bump
+        seeds = [b"market", market.authority.as_ref()],
+        bump  = market.bump
     )]
     pub market: Account<'info, Market>,
 
-    /// The user pays USDC from their token account
     #[account(mut)]
-    pub user_usdc_account: Account<'info, TokenAccount>,
-
-    /// The vault belongs to the market
+    pub user_usdc_account: Account<'info, TokenAccount>,   // owned by user
     #[account(mut)]
-    pub vault: Account<'info, TokenAccount>,
-
-    /// The token account that receives fees
-    /// Must match `market.treasury`
-    #[account(
-        mut,
-        address = market.treasury
-    )]
-    pub treasury_account: Account<'info, TokenAccount>,
-
-    /// The user’s outcome token account (for either yes_mint or no_mint)
+    pub vault:            Account<'info, TokenAccount>,    // owned by market PDA
     #[account(mut)]
-    pub user_outcome_account: Account<'info, TokenAccount>,
+    pub treasury_account: Account<'info, TokenAccount>,    // fee destination
 
+    #[account(mut)]
+    pub user_outcome_account: Account<'info, TokenAccount>, // receives YES / NO
     #[account(mut)]
     pub yes_mint: Account<'info, Mint>,
     #[account(mut)]
-    pub no_mint: Account<'info, Mint>,
+    pub no_mint:  Account<'info, Mint>,
 
     #[account(signer)]
     pub user: Signer<'info>,
@@ -50,95 +39,107 @@ pub struct BuyOutcome<'info> {
 pub fn buy_outcome(
     ctx: Context<BuyOutcome>,
     outcome_side: OutcomeSide,
-    amount: u64,
+    delta_shares: u64,
 ) -> Result<()> {
-    let market = &ctx.accounts.market;
+    // ── 1. mutate `market` in its own scope; capture needed values ───────────
+    let (bump, auth, cost_u64, fee_u64, total_paid) = {
+        let clock  = Clock::get()?;
+        let market = &mut ctx.accounts.market;
 
-    // 1. Check if market is still active (not past expiry)
-    let current_time = Clock::get()?.unix_timestamp;
-    require!(
-        current_time < market.expiry_timestamp,
-        SomeError::MarketExpired
-    );
+        require!(clock.unix_timestamp < market.expiry_timestamp, SomeError::MarketExpired);
+        require!(!market.resolved,                           SomeError::MarketAlreadyResolved);
 
-    // 2. Check if user has enough USDC (optional, but clearer)
-    require!(
-        ctx.accounts.user_usdc_account.amount >= amount,
-        SomeError::InsufficientFunds
-    );
+        // LMSR
+        let b_val_f  = market.b_value_scaled as f64 / 1_000_000_f64;
+        let raw_cost = lmsr_buy_cost(
+            b_val_f,
+            market.yes_shares,
+            market.no_shares,
+            outcome_side == OutcomeSide::Yes,
+            delta_shares,
+        );
+        msg!("raw_f = {}", raw_cost);
+        msg!("delta_shares = {}", delta_shares);
+        msg!("b_val_f = {}", b_val_f);
 
-    // 3. Calculate fee + net
-    let fee_bps = market.fee_bps as u64;
-    let fee_amount = (amount * fee_bps) / 10_000; // e.g. if fee_bps=100 => 1% fee
-    let net_amount = amount
-        .checked_sub(fee_amount)
-        .ok_or(SomeError::MathError)?;
+        let cost = safe_f64_to_u64(raw_cost)?;
+        let fee  = checked_fee_amount(cost, market.fee_bps as u64)?;
+        let tot  = cost.checked_add(fee).ok_or(SomeError::MathError)?;
 
-    // 4. Transfer fee to treasury
-    if fee_amount > 0 {
+        // update share totals
+        if outcome_side == OutcomeSide::Yes {
+            market.yes_shares =
+                market.yes_shares.checked_add(delta_shares).ok_or(SomeError::MathError)?;
+        } else {
+            market.no_shares  =
+                market.no_shares.checked_add(delta_shares).ok_or(SomeError::MathError)?;
+        }
+
+        (market.bump, market.authority, cost, fee, tot)
+    }; // mutable borrow ends here
+
+    // ── 2. USDC transfers (authority = user) ─────────────────────────────────
+    if fee_u64 > 0 {
         token::transfer(
             CpiContext::new(
                 ctx.accounts.token_program.to_account_info(),
-                token::Transfer {
-                    from: ctx.accounts.user_usdc_account.to_account_info(),
-                    to: ctx.accounts.treasury_account.to_account_info(),
+                Transfer {
+                    from:      ctx.accounts.user_usdc_account.to_account_info(),
+                    to:        ctx.accounts.treasury_account.to_account_info(),
                     authority: ctx.accounts.user.to_account_info(),
                 },
             ),
-            fee_amount,
+            fee_u64,
+        )?;
+    }
+    if cost_u64 > 0 {
+        token::transfer(
+            CpiContext::new(
+                ctx.accounts.token_program.to_account_info(),
+                Transfer {
+                    from:      ctx.accounts.user_usdc_account.to_account_info(),
+                    to:        ctx.accounts.vault.to_account_info(),
+                    authority: ctx.accounts.user.to_account_info(),
+                },
+            ),
+            cost_u64,
         )?;
     }
 
-    // 5. Transfer net_amount to vault
-    token::transfer(
-        CpiContext::new(
-            ctx.accounts.token_program.to_account_info(),
-            token::Transfer {
-                from: ctx.accounts.user_usdc_account.to_account_info(),
-                to: ctx.accounts.vault.to_account_info(),
-                authority: ctx.accounts.user.to_account_info(),
-            },
-        ),
-        net_amount,
-    )?;
-
-    // For simplicity, minted outcome tokens = net_amount (1:1 after fee).
-    let tokens_to_mint = net_amount;
-
-    // 6. Mint outcome tokens to the user’s outcome account
-    let seeds = &[
+    // ── 3. Mint outcome tokens (1 token = 1 μUSDC paid) ──────────────────────
+    let bump_slice: &[u8] = &[bump];                 // keep bump slice alive
+    let signer_seeds: &[&[u8]] = &[
         b"market",
-        market.authority.as_ref(),
-        &[market.bump],
+        auth.as_ref(),
+        bump_slice,
     ];
-    let signer_seeds = &[&seeds[..]];
 
-    let mint_key = match outcome_side {
+    let mint_ai = match outcome_side {
         OutcomeSide::Yes => ctx.accounts.yes_mint.to_account_info(),
-        OutcomeSide::No => ctx.accounts.no_mint.to_account_info(),
+        OutcomeSide::No  => ctx.accounts.no_mint .to_account_info(),
     };
 
     token::mint_to(
         CpiContext::new_with_signer(
             ctx.accounts.token_program.to_account_info(),
-            token::MintTo {
-                mint: mint_key,
-                to: ctx.accounts.user_outcome_account.to_account_info(),
+            MintTo {
+                mint:      mint_ai,
+                to:        ctx.accounts.user_outcome_account.to_account_info(),
                 authority: ctx.accounts.market.to_account_info(),
             },
-            signer_seeds,
+            &[signer_seeds],
         ),
-        tokens_to_mint,
+        cost_u64,   // mint tokens equal to μUSDC paid
     )?;
 
-    // Emit event for front-end
+    // ── 4. Emit event ────────────────────────────────────────────────────────
     emit!(OutcomeBought {
-        market: market.key(),
-        buyer: ctx.accounts.user.key(),
+        market:      ctx.accounts.market.key(),
+        buyer:       ctx.accounts.user.key(),
         outcome_side,
-        total_paid: amount,
-        fee_amount,
-        net_staked: net_amount,
+        total_paid,
+        fee_amount:  fee_u64,
+        net_staked:  cost_u64,
     });
 
     Ok(())
