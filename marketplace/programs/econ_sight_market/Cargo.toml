@@ -1,12 +1,12 @@
 [package]
-name = "marketplace"
+name = "econ_sight_market"
 version = "0.1.0"
 description = "Created with Anchor"
 edition = "2021"
 
 [lib]
 crate-type = ["cdylib", "lib"]
-name = "marketplace"
+name = "econ_sight_market"
 
 [features]
 default = []
@@ -16,6 +16,7 @@ no-idl = []
 no-log-ix-name = []
 idl-build = ["anchor-lang/idl-build", "anchor-spl/idl-build"]
 
+
 [dependencies]
-anchor-lang = {version ="0.31.0", features = ["init-if-needed"]}
-anchor-spl = {version = "0.31.0", features = ["metadata"]}
+anchor-lang = {version = "0.31.1", features=["init-if-needed"]}
+anchor-spl = "0.31.1"

@@ -1,10 +1,23 @@
 {
   "compilerOptions": {
-    "types": ["mocha", "chai"],
-    "typeRoots": ["./node_modules/@types"],
-    "lib": ["es2015"],
+    //"module": "commonjs",
+    //"target": "es2021",
+    //"lib": ["es2021"],
+    "strict": true,
+    "esModuleInterop": true,
+    "allowSyntheticDefaultImports": true,
+    "skipLibCheck": true,
+    "moduleResolution": "node",
+    "resolveJsonModule": true,
+    "target": "esnext",
+    //"module": "esnext",
     "module": "commonjs",
-    "target": "es6",
-    "esModuleInterop": true
-  }
+    "lib": ["esnext", "dom"]
+
+  },
+  "include": [
+    "tests/**/*",
+    "target/types/**/*.ts"        // ← add this line
+  ],
+  "exclude": ["node_modules"]
 }
