@@ -1,17 +1,15 @@
 {
-    "compilerOptions": {
-      "target": "es2020",
-      "module": "commonjs",
-      "moduleResolution": "node",
-      "esModuleInterop": true,
-      "resolveJsonModule": true,      // ← add this line
-      "strict": true,
-      "skipLibCheck": true,
-      "outDir": "dist"
-    },
-    "include": [
-      "oracle.ts",
-      "../target/idl/**/*.json"       // optional: lets TS find the IDL file
-    ]
-  }
-  
+  "compilerOptions": {
+    "target": "es2020",
+    "module": "nodenext",          // full ESM support
+    "moduleResolution": "nodenext",
+    "esModuleInterop": true,
+    "resolveJsonModule": true,
+    "strict": true,
+    "skipLibCheck": true
+  },
+  "include": [
+    "oracle.ts",
+    "../target/idl/**/*.json"
+  ]
+}

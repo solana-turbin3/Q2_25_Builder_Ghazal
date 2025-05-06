@@ -11,7 +11,7 @@ use instructions::*;
 use state::{MarketState, OutcomeSide};
 
 // Program ID
-declare_id!("4n3PUjjcH54EpLfH3qbKofM2G5dGAYcpXo4vbeX3769a");
+declare_id!("HNBosxTmZSjq7pwVEeqx5sEkAuwNroG2JWzvAnQYrRuy");
 
 #[program]
 pub mod econ_sight_market {

@@ -1,20 +1,19 @@
 {
   "name": "oracle-bot",
   "version": "1.0.0",
-  "main": "index.js",
+  "type": "module",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "oracle": "tsx oracle.ts"
   },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
-  "description": "",
   "dependencies": {
-    "@coral-xyz/anchor": "^0.31.1",
+    "@coral-xyz/anchor": "0.31.1",
     "@solana/web3.js": "^1.98.2",
     "dotenv": "^16.5.0",
     "openai": "^4.96.2",
-    "ts-node": "^10.9.2",
+    "tsx": "^4.7.0",
     "typescript": "^5.8.3"
+  },
+  "devDependencies": {
+    "tsx": "^4.19.4"
   }
 }

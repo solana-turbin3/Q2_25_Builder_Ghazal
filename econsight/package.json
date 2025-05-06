@@ -15,6 +15,7 @@
     "@types/chai": "^4.3.0",
     "@types/mocha": "^9.0.0",
     "chai": "^4.3.4",
+    "dotenv": "^16.5.0",
     "mocha": "^11.1.0",
     "prettier": "^2.6.2",
     "ts-mocha": "^10.0.0",

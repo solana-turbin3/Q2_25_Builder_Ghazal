@@ -24,11 +24,13 @@ describe("econ_sight_market", () => {
   const connection = provider.connection;
 
 
-const PROGRAM_ID = new web3.PublicKey("4n3PUjjcH54EpLfH3qbKofM2G5dGAYcpXo4vbeX3769a");
+//const PROGRAM_ID = new web3.PublicKey("D7tjXkMzz3Gd3BAfiur8kSCWeSxJEhWLejncLBnr2mwg");
 
-const program = anchor.workspace.EconSightMarket as Program<EconSightMarket>;
+//const program = anchor.workspace.EconSightMarket as Program<EconSightMarket>;
+const program  = anchor.workspace.EconSightMarket as Program<EconSightMarket>;
+const PROGRAM_ID = program.programId;  
 
-  async function fund(pk: PublicKey, sol = 2) {
+async function fund(pk: PublicKey, sol = 2) {
     const sig = await connection.requestAirdrop(pk, sol * 1e9);
     await connection.confirmTransaction(sig, "confirmed");
   }
