@@ -12,7 +12,8 @@
     "target": "esnext",
     //"module": "esnext",
     "module": "commonjs",
-    "lib": ["esnext", "dom"]
+    "lib": ["esnext", "dom"],
+    "types": ["node"]
 
   },
   "include": [
