@@ -1,7 +1,6 @@
+// programs/econ_sight_market/src/instructions/purchase_outcome.rs
 use anchor_lang::prelude::*;
-use anchor_spl::token::{
-    self, Token, TokenAccount, Mint, Transfer, MintTo,
-};
+use anchor_spl::token::{self, Token, TokenAccount, Mint, Transfer, MintTo};
 use crate::state::{MarketState, OutcomeSide};
 use crate::errors::SomeError;
 use crate::events::OutcomeBought;
@@ -41,15 +40,15 @@ pub fn buy_outcome(
     outcome_side: OutcomeSide,
     delta_shares: u64,
 ) -> Result<()> {
-    // ── 1. mutate `market` in its own scope; capture needed values ───────────
+    /* ── 1. mutate `market`; calculate cost & fee ──────────────── */
     let (bump, auth, cost_u64, fee_u64, total_paid) = {
         let clock  = Clock::get()?;
         let market = &mut ctx.accounts.market;
 
         require!(clock.unix_timestamp < market.expiry_timestamp, SomeError::MarketExpired);
-        require!(!market.resolved,                           SomeError::MarketAlreadyResolved);
+        require!(!market.resolved,                             SomeError::MarketAlreadyResolved);
 
-        // LMSR
+        // LMSR cost = C(q_after) − C(q_before)
         let b_val_f  = market.b_value_scaled as f64 / 1_000_000_f64;
         let raw_cost = lmsr_buy_cost(
             b_val_f,
@@ -58,27 +57,21 @@ pub fn buy_outcome(
             outcome_side == OutcomeSide::Yes,
             delta_shares,
         );
-        msg!("raw_f = {}", raw_cost);
-        msg!("delta_shares = {}", delta_shares);
-        msg!("b_val_f = {}", b_val_f);
-
         let cost = safe_f64_to_u64(raw_cost)?;
         let fee  = checked_fee_amount(cost, market.fee_bps as u64)?;
         let tot  = cost.checked_add(fee).ok_or(SomeError::MathError)?;
 
         // update share totals
         if outcome_side == OutcomeSide::Yes {
-            market.yes_shares =
-                market.yes_shares.checked_add(delta_shares).ok_or(SomeError::MathError)?;
+            market.yes_shares = market.yes_shares.checked_add(delta_shares).ok_or(SomeError::MathError)?;
         } else {
-            market.no_shares  =
-                market.no_shares.checked_add(delta_shares).ok_or(SomeError::MathError)?;
+            market.no_shares  = market.no_shares .checked_add(delta_shares).ok_or(SomeError::MathError)?;
         }
 
         (market.bump, market.authority, cost, fee, tot)
-    }; // mutable borrow ends here
+    };
 
-    // ── 2. USDC transfers (authority = user) ─────────────────────────────────
+    /* ── 2. USDC transfers (payer = user) ──────────────────────── */
     if fee_u64 > 0 {
         token::transfer(
             CpiContext::new(
@@ -106,13 +99,9 @@ pub fn buy_outcome(
         )?;
     }
 
-    // ── 3. Mint outcome tokens (1 token = 1 μUSDC paid) ──────────────────────
-    let bump_slice: &[u8] = &[bump];                 // keep bump slice alive
-    let signer_seeds: &[&[u8]] = &[
-        b"market",
-        auth.as_ref(),
-        bump_slice,
-    ];
+    /* ── 3. Mint outcome tokens (1 token = 1 µUSDC redemption) ─── */
+    let bump_slice: &[u8] = &[bump];
+    let signer_seeds: &[&[u8]] = &[b"market", auth.as_ref(), bump_slice];
 
     let mint_ai = match outcome_side {
         OutcomeSide::Yes => ctx.accounts.yes_mint.to_account_info(),
@@ -129,10 +118,10 @@ pub fn buy_outcome(
             },
             &[signer_seeds],
         ),
-        cost_u64,   // mint tokens equal to μUSDC paid
+        delta_shares,          // ✅ mint *shares*, not cost
     )?;
 
-    // ── 4. Emit event ────────────────────────────────────────────────────────
+    /* ── 4. Emit event ─────────────────────────────────────────── */
     emit!(OutcomeBought {
         market:      ctx.accounts.market.key(),
         buyer:       ctx.accounts.user.key(),

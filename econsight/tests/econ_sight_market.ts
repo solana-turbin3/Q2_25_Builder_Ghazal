@@ -1,8 +1,9 @@
+/// <reference types="mocha" />
+
 // tests/econ_sight_market.ts
 import * as anchor from "@coral-xyz/anchor";
-import BN from "bn.js"
-import { Program, AnchorProvider, web3, Idl } from "@coral-xyz/anchor";
-//import { Program, BN, AnchorProvider, web3, Idl } from "@coral-xyz/anchor";
+import { Program, AnchorProvider, web3 } from "@coral-xyz/anchor";
+import BN from "bn.js";
 import { PublicKey, Keypair, SystemProgram } from "@solana/web3.js";
 import {
   createMint,
@@ -12,30 +13,27 @@ import {
 } from "@solana/spl-token";
 import { assert } from "chai";
 
-// 1) Import the auto-generated IDL and the JSON
-
-const idl = require("../target/idl/econ_sight_market.json");
 import { EconSightMarket } from "../target/types/econ_sight_market";
 
-describe("econ_sight_market", () => {
-  // A) Create a custom provider + connection
+describe("econ_sight_market – LMSR flow", () => {
+  /* ── provider / program ─────────────────────────────────────── */
   const provider = AnchorProvider.env();
   anchor.setProvider(provider);
   const connection = provider.connection;
 
+  const program = anchor.workspace
+    .EconSightMarket as Program<EconSightMarket>;
+  const PROGRAM_ID = program.programId;
 
-//const PROGRAM_ID = new web3.PublicKey("D7tjXkMzz3Gd3BAfiur8kSCWeSxJEhWLejncLBnr2mwg");
-
-//const program = anchor.workspace.EconSightMarket as Program<EconSightMarket>;
-const program  = anchor.workspace.EconSightMarket as Program<EconSightMarket>;
-const PROGRAM_ID = program.programId;  
-
-async function fund(pk: PublicKey, sol = 2) {
-    const sig = await connection.requestAirdrop(pk, sol * 1e9);
+  async function fund(pk: PublicKey, sol = 2) {
+    const sig = await connection.requestAirdrop(
+      pk,
+      sol * web3.LAMPORTS_PER_SOL
+    );
     await connection.confirmTransaction(sig, "confirmed");
   }
 
-  // Keypairs, PDAs, etc.
+  /* ── actors & PDAs ──────────────────────────────────────────── */
   const marketCreator = provider.wallet as anchor.Wallet;
   const userA = Keypair.generate();
 
@@ -49,13 +47,11 @@ async function fund(pk: PublicKey, sol = 2) {
   let userAYes: PublicKey;
   let treasuryUsdc: PublicKey;
 
-  // --------------------------------------------------------------------------
-  // SETUP
-  // --------------------------------------------------------------------------
+  /* ── global setup ───────────────────────────────────────────── */
   before(async () => {
     await fund(userA.publicKey, 2);
 
-    // create a USDC mint in memory
+    /* in-memory USDC mint */
     usdcMint = await createMint(
       connection,
       marketCreator.payer,
@@ -63,7 +59,8 @@ async function fund(pk: PublicKey, sol = 2) {
       null,
       6
     );
-    // create a token account for userA
+
+    /* USDC token accounts */
     userAUsdc = await createAccount(
       connection,
       marketCreator.payer,
@@ -85,20 +82,27 @@ async function fund(pk: PublicKey, sol = 2) {
       usdcMint,
       marketCreator.publicKey
     );
+    await mintTo(
+      connection,
+      marketCreator.payer,
+      usdcMint,
+      treasuryUsdc,
+      marketCreator.payer,
+      1_000_000_000
+    );
   });
 
-  // --------------------------------------------------------------------------
-  it("Create a Market", async () => {
-    const question = "Will PMI >= 50 by Aug 1, 2025?";
+  /* ── Create Market ──────────────────────────────────────────── */
+  it("creates a market", async () => {
+    const question = "Will PMI ≥ 50 by Aug 1 2025?";
     const expiryTs = new BN(Math.floor(Date.now() / 1000) + 2);
-    const feeBps = 100;
-    const bValScaled = new BN(10_000_000);
+    const feeBps   = 100;               // 1 %
+    const bScaled  = new BN(10_000_000); // b = 10
 
     [marketPda] = await PublicKey.findProgramAddress(
       [Buffer.from("market"), marketCreator.publicKey.toBuffer()],
       PROGRAM_ID
     );
-    console.log("🛈  Market PDA =", marketPda.toBase58());
     [yesMintPda] = await PublicKey.findProgramAddress(
       [Buffer.from("yes_mint"), marketPda.toBuffer()],
       PROGRAM_ID
@@ -113,7 +117,7 @@ async function fund(pk: PublicKey, sol = 2) {
     );
 
     await program.methods
-      .createMarket(question, expiryTs, feeBps, treasuryUsdc, bValScaled)
+      .createMarket(question, expiryTs, feeBps, treasuryUsdc, bScaled)
       .accounts({
         market: marketPda,
         yesMint: yesMintPda,
@@ -126,29 +130,20 @@ async function fund(pk: PublicKey, sol = 2) {
       } as any)
       .rpc();
 
-      console.log("Available account namespaces:", Object.keys(program.account));
-    const acct = await program.account.marketState.fetch(marketPda);
-   
-    
-    assert.equal(Number(acct.bValueScaled), 10_000_000);
+    const m = await program.account.marketState.fetch(marketPda);
+    assert.equal(Number(m.bValueScaled), 10_000_000, "b stored correctly");
   });
 
-  // --------------------------------------------------------------------------
-  it("User Buys Outcome (Yes)", async () => {
-    const amount = new BN(1_000);
+  /* ── Symmetric trades (100 YES, 100 NO) ─────────────────────── */
+  it("symmetric trades leave vault solvent", async () => {
+    const SHARES = new BN(100); // 100 YES vs 100 NO
 
+    /* userA buys 100 YES */
     userAYes = await createAccount(
-      connection,
-      marketCreator.payer,
-      yesMintPda,
-      userA.publicKey
+      connection, marketCreator.payer, yesMintPda, userA.publicKey
     );
-
-    const treasuryPre = await getAccount(connection, treasuryUsdc);
-    const userPre = await getAccount(connection, userAUsdc);
-
     await program.methods
-      .buyOutcome({ yes: {} }, amount)
+      .buyOutcome({ yes: {} }, SHARES)
       .accounts({
         market: marketPda,
         userUsdcAccount: userAUsdc,
@@ -163,19 +158,32 @@ async function fund(pk: PublicKey, sol = 2) {
       .signers([userA])
       .rpc();
 
-    const treasuryPost = await getAccount(connection, treasuryUsdc);
-    const userPost = await getAccount(connection, userAUsdc);
+    /* creator buys 100 NO */
+    const creatorNo = await createAccount(
+      connection, marketCreator.payer, noMintPda, marketCreator.publicKey
+    );
+    await program.methods
+      .buyOutcome({ no: {} }, SHARES)
+      .accounts({
+        market: marketPda,
+        userUsdcAccount: treasuryUsdc,
+        vault: vaultPda,
+        treasuryAccount: treasuryUsdc,
+        userOutcomeAccount: creatorNo,
+        yesMint: yesMintPda,
+        noMint: noMintPda,
+        user: marketCreator.publicKey,
+        tokenProgram: anchor.utils.token.TOKEN_PROGRAM_ID,
+      } as any)
+      .rpc();
 
-    const treasuryDiff = Number(treasuryPost.amount) - Number(treasuryPre.amount);
-    const userDiff = Number(userPre.amount) - Number(userPost.amount);
-
-    assert.isAbove(treasuryDiff, 0, "Some fee was charged");
-    assert.isAtLeast(userDiff, amount.toNumber(), "User paid >= requested");
+    const vaultBal = (await getAccount(connection, vaultPda)).amount;
+    assert.isAtLeast(Number(vaultBal), SHARES.toNumber(), "vault ≥ 100 µUSDC");
   });
 
-  // --------------------------------------------------------------------------
-  it("Resolve Market (Yes wins)", async () => {
-    await new Promise((r) => setTimeout(r, 3000));
+  /* ── Resolve YES, winner profits ─────────────────────────────── */
+  it("winner claims and profits", async () => {
+    await new Promise((r) => setTimeout(r, 3000)); // wait past expiry
 
     await program.methods
       .resolveMarket({ yes: {} })
@@ -185,25 +193,25 @@ async function fund(pk: PublicKey, sol = 2) {
         oracleAuthority: marketCreator.publicKey,
       } as any)
       .rpc();
-  });
 
-  // --------------------------------------------------------------------------
-  it("Claim Rewards", async () => {
+    const before = (await getAccount(connection, userAUsdc)).amount;
+
     await program.methods
       .claimRewards()
       .accounts({
         market: marketPda,
         vault: vaultPda,
         userOutcomeAccount: userAYes,
-        userUsdcAccount: userAUsdc,
+        userUsdcAccount:    userAUsdc,
         yesMint: yesMintPda,
-        noMint: noMintPda,
+        noMint:  noMintPda,
         tokenProgram: anchor.utils.token.TOKEN_PROGRAM_ID,
         user: userA.publicKey,
       } as any)
       .signers([userA])
       .rpc();
 
-    assert.ok(true, "Rewards claimed");
+    const after = (await getAccount(connection, userAUsdc)).amount;
+    assert.isAbove(Number(after), Number(before), "userA made a profit");
   });
 });
