@@ -1,2 +1,8 @@
 marketplace/oracle-bot/.env
 econsight/oracle-bot/.env
+# Ignore every .env…
+*.env
+
+# …but track this exact one:
+!econsight2/app/.env
+
