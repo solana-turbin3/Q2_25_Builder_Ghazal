@@ -1,0 +1,74 @@
+
+1. Market Creation
+	1.	Alice decides to create a market about the question:
+“Will it rain in New York on July 1st?”
+	2.	She calls the “create_market” instruction with:
+	•	expiry_timestamp: July 1st, 12:00 UTC (for example).
+	•	fee_bps: Suppose she sets 1% (that is 100 basis points).
+	•	treasury: The address where fees go (maybe Alice’s address or some DAO).
+	•	b_value_scaled: Let’s say it’s 3,000,000 (which might represent b_value_f = 3.0 if you treat it as b_value_scaled / 1_000_000).
+	3.	The program:
+	•	Creates a MarketState account (a PDA) that stores all market info:
+	•	The question, expiry time, yes_mint, no_mint, etc.
+	•	Creates two new SPL token mints:
+	•	YES Mint (for “It will rain”)
+	•	NO Mint  (for “It will not rain”)
+	•	Creates a Vault (an associated token account owned by the market PDA) where USDC collateral will accumulate.
+
+Now the market is alive. No one yet owns any YES or NO tokens.
+
+⸻
+
+2. Buying YES/NO Shares
+
+Let’s say Bob thinks it’s likely to rain. He decides to buy YES shares.
+	1.	Bob calls the “buy_outcome” instruction and chooses the YES side with some delta_shares.
+Example: He wants 10 YES tokens.
+	2.	The program checks:
+	•	The market is still open (not expired, not resolved).
+	•	Calculates the cost using the LMSR formula.
+	•	The formula looks at how many YES/NO shares exist so far. Initially, it might be zero, so the cost might be relatively low.
+	•	Suppose the cost for 10 YES shares is ~12 USDC (this number depends on the B-value).
+	•	Then it adds a 1% fee → 0.12 USDC → total ~12.12 USDC.
+	3.	Bob pays:
+	•	0.12 USDC goes to the treasury (the fee).
+	•	12.00 USDC goes into the Vault.
+	4.	The program mints 10 YES tokens to Bob’s token account.
+	5.	The market’s internal record:
+	•	yes_shares increases by 10.
+	•	Vault now has ~12 USDC.
+
+If later, Carol thinks it won’t rain, she can buy NO shares in a similar way. The cost for NO shares may differ if many YES or NO shares have already been purchased, because the LMSR formula shifts the price to reflect demand.
+
+Key point: Each time someone buys, the vault accumulates more USDC. This ensures the market has the collateral to pay out winners.
+
+⸻
+
+3. More Buyers Join
+	•	Over time, more traders buy YES or NO shares. The price of each share rises/falls based on how many shares are already minted. (That’s the “scoring rule” part of LMSR—more demand for one side makes that side more expensive).
+	•	The Vault keeps growing in USDC because that’s where all the purchasing funds go (minus the small fee to treasury).
+	•	Eventually, we have a bunch of people holding YES or NO tokens.
+
+⸻
+
+4. Market Expiry and Resolution
+	1.	On July 1st, the market hits its expiry_timestamp. No one can buy or sell anymore (the code checks for expiry).
+	2.	Suppose it does rain in New York.
+	3.	Once the event’s outcome is known, Alice (the market authority) calls resolve_market:
+	•	She picks winner_side = YES.
+	•	The program checks we’re past expiry and the market is not already resolved.
+	•	It sets the market’s winner to YES and marks resolved = true.
+
+⸻
+
+5. Claiming Rewards
+
+Now that the outcome is official:
+	1.	Any user who has YES tokens can call claim_rewards.
+	2.	The program checks:
+	•	Market is resolved.
+	•	The winner is YES, so you must hold YES tokens if you want to claim.
+	3.	Suppose Bob had 10 YES tokens. The program sees he has 10 in his wallet.
+	4.	It transfers 10 USDC (1 USDC per YES token) from the Vault to Bob’s USDC account.
+	5.	It burns Bob’s 10 YES tokens (so Bob can’t claim again).
+	6.	If Carol has NO tokens, she’s out of luck because NO is the losing side. NO tokens are worthless post-resolution.
