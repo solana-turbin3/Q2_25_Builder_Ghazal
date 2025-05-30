@@ -6,7 +6,8 @@ resolution = true
 skip-lint = false
 
 [programs.localnet]
-econ_sight_market = "4n3PUjjcH54EpLfH3qbKofM2G5dGAYcpXo4vbeX3769a"
+marketplace = "5NDHm1KszV49wzYeMCSbyR7Wqaz1ntkBmWgj7QSjYucm"
+
 [registry]
 url = "https://api.apr.dev"
 
@@ -16,5 +17,3 @@ wallet = "~/.config/solana/id.json"
 
 [scripts]
 test = "yarn run ts-mocha -p ./tsconfig.json -t 1000000 tests/**/*.ts"
-[typescript]
-out-dir = "target/types"
