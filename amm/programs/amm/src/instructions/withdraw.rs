@@ -15,6 +15,7 @@ pub struct Withdraw<'info> {
     pub mint_x: Account<'info, Mint>,
     pub mint_y: Account<'info, Mint>,
     #[account(
+        mut,
         seeds = [b"lp",config.key().as_ref()],
         bump = config.lp_bump,
         mint::decimals = 6,
@@ -51,7 +52,7 @@ pub struct Withdraw<'info> {
     #[account(
     init_if_needed,
     payer = user,
-    associated_token::mint = mint_y,
+    associated_token::mint = mint_lp,
     associated_token::authority = user,
     )]
     pub user_lp: Account<'info, TokenAccount>,
@@ -70,6 +71,8 @@ pub struct Withdraw<'info> {
 }
 
 impl Withdraw<'_> {
+    //If the pool is empty, pretend the user gets their requested minimums (likely zero). Otherwise, calculate the real X/Y amounts they should receive for the LP tokens they’re burning.
+    //In a well-behaved AMM, an LP should never arrive at a state where: vault_x.amount == 0, vault_y.amount == 0, mint_lp.supply == 0
     pub fn withdraw(
         &mut self,
         lp_amount: u64, // amount of LP tokens to burn

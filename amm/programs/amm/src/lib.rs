@@ -11,7 +11,7 @@ declare_id!("2T48SCU6YrN2bptD59KYoFsB9QbWayR2mLxZtJwQkSBE");
 
 #[program]
 pub mod amm {
-    use crate::instruction::Withdraw;
+    //use crate::instruction::Withdraw;
 
     use super::*;
 

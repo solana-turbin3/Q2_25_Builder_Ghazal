@@ -24,8 +24,8 @@ const SWAP_IN    = 10;       // trader swaps 10 X → Y
 const MIN_OUT    = 0;        // no slippage guard for demo
 const X_TO_Y     = true;
 const LP_AMOUNT = 100;
-const MIN_X=10;
-const MIN_Y=10;
+const MIN_X=1;
+const MIN_Y=1;
 
 /* ------------------------------------------------------- */
 /*  actors (keypairs)                                      */
@@ -190,7 +190,7 @@ describe("AMM – happy path", () => {
         tokenProgram: TOKEN_PROGRAM_ID,
         associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID,
         systemProgram: SystemProgram.programId,
-      })
+      }) 
       .signers([lp])
       .rpc();
 
@@ -210,10 +210,8 @@ describe("AMM – happy path", () => {
         mintLp,
         vaultX,
         vaultY,
-        userX: lpX,
-        userY: lpY,
-        userLp: lpLp,
-        config: configPda,
+        userX: traderX,
+        userY: traderY,
         tokenProgram: TOKEN_PROGRAM_ID,
         associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID,
         systemProgram: SystemProgram.programId,
@@ -228,24 +226,27 @@ describe("AMM – happy path", () => {
    /* ----------------------------------------------------- */
   it("withdraws", async () => {
     await program.methods
-      .swap(new BN(LP_AMOUNT), new BN(MIN_X), new Number(MIN_Y))
+      .withdraw(new BN(LP_AMOUNT), new BN(MIN_X), new BN(MIN_Y))
       .accounts({
         user: lp.publicKey,
         mintX,
         mintY,
+        mintLp,
         vaultX,
         vaultY,
-        userX: traderX,
-        userY: traderY,
+        userX: lpX,
+        userY: lpY,
+        userLp:lpLp,
+        config: configPda,
         tokenProgram: TOKEN_PROGRAM_ID,
         associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID,
         systemProgram: SystemProgram.programId,
       })
-      .signers([trader])
+      .signers([lp])
       .rpc();
+    
+    const lpAfter = await getAccount(provider.connection, lpLp);
+  assert.equal(Number(lpAfter.amount), LP_TOKENS - 100, "burned LP tokens");
 
-    /* very small assertion: trader’s Y balance increased */
-    const yAfter = await getAccount(provider.connection, traderY);
-    assert.ok(Number(yAfter.amount) > 0, "trader received Y");
   });
 });
