@@ -1,0 +1,10 @@
+/Users/ghazalassadipour/Documents/GhazalApplications/marketplace/target/debug/deps/libcargo_toml-db6ce0373491a842.rmeta: /Users/ghazalassadipour/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/cargo_toml-0.19.2/src/cargo_toml.rs /Users/ghazalassadipour/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/cargo_toml-0.19.2/src/afs.rs /Users/ghazalassadipour/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/cargo_toml-0.19.2/src/error.rs /Users/ghazalassadipour/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/cargo_toml-0.19.2/src/inheritable.rs
+
+/Users/ghazalassadipour/Documents/GhazalApplications/marketplace/target/debug/deps/libcargo_toml-db6ce0373491a842.rlib: /Users/ghazalassadipour/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/cargo_toml-0.19.2/src/cargo_toml.rs /Users/ghazalassadipour/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/cargo_toml-0.19.2/src/afs.rs /Users/ghazalassadipour/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/cargo_toml-0.19.2/src/error.rs /Users/ghazalassadipour/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/cargo_toml-0.19.2/src/inheritable.rs
+
+/Users/ghazalassadipour/Documents/GhazalApplications/marketplace/target/debug/deps/cargo_toml-db6ce0373491a842.d: /Users/ghazalassadipour/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/cargo_toml-0.19.2/src/cargo_toml.rs /Users/ghazalassadipour/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/cargo_toml-0.19.2/src/afs.rs /Users/ghazalassadipour/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/cargo_toml-0.19.2/src/error.rs /Users/ghazalassadipour/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/cargo_toml-0.19.2/src/inheritable.rs
+
+/Users/ghazalassadipour/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/cargo_toml-0.19.2/src/cargo_toml.rs:
+/Users/ghazalassadipour/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/cargo_toml-0.19.2/src/afs.rs:
+/Users/ghazalassadipour/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/cargo_toml-0.19.2/src/error.rs:
+/Users/ghazalassadipour/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/cargo_toml-0.19.2/src/inheritable.rs:

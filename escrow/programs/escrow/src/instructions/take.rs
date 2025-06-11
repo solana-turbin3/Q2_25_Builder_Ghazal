@@ -5,10 +5,10 @@ use anchor_spl::{
 use crate::state::Escrow;
 
 #[derive(Accounts)]
-#[instruction(seed:u64)]
 pub struct Take<'info> {
     #[account(mut)]
     pub taker: Signer<'info>,
+    #[account(mut)]
     pub maker: SystemAccount<'info>,
     pub mint_a: InterfaceAccount<'info, Mint>,
     pub mint_b: InterfaceAccount<'info, Mint>,
@@ -38,7 +38,7 @@ pub struct Take<'info> {
         has_one = mint_a,
         has_one = mint_b,
         close = maker,
-        seeds = [b"escrow", maker.key().as_ref(), seed.to_le_bytes().as_ref()],
+        seeds = [b"escrow", maker.key().as_ref(), escrow.seed.to_le_bytes().as_ref()],
         bump = escrow.bump,
     )]
     pub escrow: Account<'info, Escrow>,
@@ -92,7 +92,7 @@ impl<'info> Take<'info> {
         transfer_checked(cpi_ctx, deposit_amount, self.mint_a.decimals)?;
         Ok(())
     }
-
+//The maker funded the creation of the vault ATA. Creating an SPL TokenAccount costs ~0.002 SOL, which is rent-exempt and paid by the maker.The taker receives that SOL when the vault is closed
     pub fn close_vault(&mut self) -> Result<()> {
         let cpi_program = self.token_program.to_account_info();
         let cpi_account = CloseAccount {

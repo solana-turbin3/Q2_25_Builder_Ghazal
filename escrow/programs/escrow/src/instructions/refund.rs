@@ -31,7 +31,7 @@ pub struct Refund<'info> {
     )]
     pub vault: InterfaceAccount<'info, TokenAccount>,
     pub system_program: Program<'info, System>,
-   pub associated_token_program: Program<'info, AssociatedToken>,
+    pub associated_token_program: Program<'info, AssociatedToken>,
     pub token_program: Interface<'info, TokenInterface>,
 }
 
@@ -54,7 +54,7 @@ impl<'info> Refund<'info> {
             ],
         ];
         let cpi_ctx = CpiContext::new_with_signer(cpi_program, cpi_accounts, seeds);
-        transfer_checked(cpi_ctx, self.escrow.receive, self.mint_a.decimals)?;
+        transfer_checked(cpi_ctx, self.vault.amount, self.mint_a.decimals)?;
         Ok(())
     }
 

@@ -1,0 +1,10 @@
+/Users/ghazalassadipour/Documents/GhazalApplications/marketplace/target/debug/deps/libautocfg-cd7df810897d57c7.rmeta: /Users/ghazalassadipour/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/autocfg-1.4.0/src/lib.rs /Users/ghazalassadipour/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/autocfg-1.4.0/src/error.rs /Users/ghazalassadipour/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/autocfg-1.4.0/src/rustc.rs /Users/ghazalassadipour/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/autocfg-1.4.0/src/version.rs
+
+/Users/ghazalassadipour/Documents/GhazalApplications/marketplace/target/debug/deps/libautocfg-cd7df810897d57c7.rlib: /Users/ghazalassadipour/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/autocfg-1.4.0/src/lib.rs /Users/ghazalassadipour/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/autocfg-1.4.0/src/error.rs /Users/ghazalassadipour/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/autocfg-1.4.0/src/rustc.rs /Users/ghazalassadipour/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/autocfg-1.4.0/src/version.rs
+
+/Users/ghazalassadipour/Documents/GhazalApplications/marketplace/target/debug/deps/autocfg-cd7df810897d57c7.d: /Users/ghazalassadipour/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/autocfg-1.4.0/src/lib.rs /Users/ghazalassadipour/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/autocfg-1.4.0/src/error.rs /Users/ghazalassadipour/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/autocfg-1.4.0/src/rustc.rs /Users/ghazalassadipour/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/autocfg-1.4.0/src/version.rs
+
+/Users/ghazalassadipour/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/autocfg-1.4.0/src/lib.rs:
+/Users/ghazalassadipour/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/autocfg-1.4.0/src/error.rs:
+/Users/ghazalassadipour/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/autocfg-1.4.0/src/rustc.rs:
+/Users/ghazalassadipour/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/autocfg-1.4.0/src/version.rs:

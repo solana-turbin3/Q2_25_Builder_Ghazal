@@ -14,35 +14,35 @@ pub struct Deposit<'info> {
     pub mint_x: Account<'info, Mint>,
     pub mint_y: Account<'info, Mint>,
 
-    #[account(
+    #[account(mut,
         seeds = [b"lp", config.key().as_ref()],
         bump = config.lp_bump,
     )]
     pub mint_lp: Account<'info, Mint>,
 
-    #[account(
+    #[account(mut,
         associated_token::mint = mint_x,
         associated_token::authority = config,
     )]
     pub vault_x: Account<'info, TokenAccount>,
 
-    #[account(
+    #[account(mut,
         associated_token::mint = mint_y,
         associated_token::authority = config,
     )]
     pub vault_y: Account<'info, TokenAccount>,
 
-    #[account(
+    #[account(mut,
         associated_token::mint = mint_x,
-        associated_token::authority = config,
+        associated_token::authority = user,
     )]
-    pub user_x: Account<'info, TokenAccount>,
+    pub user_x: Account<'info, TokenAccount>,//Associated Token Accounts (ATA). Holds user’s Token X
     
-    #[account(
+    #[account(mut,
         associated_token::mint = mint_y,
-        associated_token::authority = config,
+        associated_token::authority = user,
     )]
-    pub user_y: Account<'info, TokenAccount>,
+    pub user_y: Account<'info, TokenAccount>,//Associated Token Accounts (ATA). Holds user’s Token Y
 
 
     
@@ -60,26 +60,33 @@ pub struct Deposit<'info> {
         associated_token::mint = mint_lp,
         associated_token::authority = user,
     )]
-    pub user_lp: Account<'info, TokenAccount>,
+    pub user_lp: Account<'info, TokenAccount>,//Associated Token Accounts (ATA). Holds user’s LP
 
     pub token_program: Program<'info, Token>,
     pub associated_token_program: Program<'info, AssociatedToken>,
     pub system_program: Program<'info, System>,
 }
-
+	//Example
+    //deposit(amount = 1_000, max_x = 500_000, max_y = 250_000)
+    //•	User wants 1,000 LP tokens
+	//•	They’re willing to deposit up to 500,000 units of Token X and 250,000 units of Token Y
+	//•	The contract will compute the actual required amounts x and y needed to mint 1,000 LP tokens using current pool ratios
+    //. if the pool is empty (x, y) = (max_x, max_y)
+	//•	If x <= max_x and y <= max_y, the deposit goes through
+	//•	Otherwise, it errors out due to slippage
 impl<'info> Deposit<'info> {
     pub fn deposit(&mut self, amount: u64, max_x: u64, max_y: u64) -> Result<()> {
 
         assert!(amount != 0);
-
+        //If the pool is empty:
         let (x,y) = match self.mint_lp.supply == 0 && self.vault_x.amount == 0 {
             true => (max_x, max_y),
             false => {
                 let amounts = ConstantProduct::xy_deposit_amounts_from_l(
-                    self.vault_x.amount, 
-                    self.vault_y.amount, 
-                    self.mint_lp.supply, 
-                    amount, 
+                    self.vault_x.amount, // current X in pool
+                    self.vault_y.amount, // current Y in pool
+                    self.mint_lp.supply, // total LP supply
+                    amount,              // how many LP tokens user wants
                     6
                 ).unwrap();
 

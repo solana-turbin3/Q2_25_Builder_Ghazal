@@ -1,0 +1,10 @@
+/Users/ghazalassadipour/Documents/GhazalApplications/marketplace/target/debug/deps/libthiserror-3de549771cb70ad5.rmeta: /Users/ghazalassadipour/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/thiserror-1.0.69/src/lib.rs /Users/ghazalassadipour/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/thiserror-1.0.69/src/aserror.rs /Users/ghazalassadipour/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/thiserror-1.0.69/src/display.rs /Users/ghazalassadipour/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/thiserror-1.0.69/src/provide.rs
+
+/Users/ghazalassadipour/Documents/GhazalApplications/marketplace/target/debug/deps/libthiserror-3de549771cb70ad5.rlib: /Users/ghazalassadipour/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/thiserror-1.0.69/src/lib.rs /Users/ghazalassadipour/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/thiserror-1.0.69/src/aserror.rs /Users/ghazalassadipour/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/thiserror-1.0.69/src/display.rs /Users/ghazalassadipour/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/thiserror-1.0.69/src/provide.rs
+
+/Users/ghazalassadipour/Documents/GhazalApplications/marketplace/target/debug/deps/thiserror-3de549771cb70ad5.d: /Users/ghazalassadipour/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/thiserror-1.0.69/src/lib.rs /Users/ghazalassadipour/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/thiserror-1.0.69/src/aserror.rs /Users/ghazalassadipour/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/thiserror-1.0.69/src/display.rs /Users/ghazalassadipour/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/thiserror-1.0.69/src/provide.rs
+
+/Users/ghazalassadipour/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/thiserror-1.0.69/src/lib.rs:
+/Users/ghazalassadipour/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/thiserror-1.0.69/src/aserror.rs:
+/Users/ghazalassadipour/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/thiserror-1.0.69/src/display.rs:
+/Users/ghazalassadipour/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/thiserror-1.0.69/src/provide.rs:

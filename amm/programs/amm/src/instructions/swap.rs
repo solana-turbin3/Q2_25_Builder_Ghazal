@@ -1,34 +1,33 @@
 use anchor_lang::prelude::*;
 use anchor_spl::{
     associated_token::AssociatedToken,
-    token::{Transfer, transfer, Token, TokenAccount, Mint},
+    token::{transfer, Transfer, Token, TokenAccount, Mint},
 };
-use constant_product_curve::ConstantProduct; // Or your own math library
+use constant_product_curve::ConstantProduct;           // or your own math lib
 
 use crate::state::Config;
 
-// The data for your Swap instruction
+/* -------------------------------------------------------------------------- */
+/*                                Account ctx                                 */
+/* -------------------------------------------------------------------------- */
 #[derive(Accounts)]
 pub struct Swap<'info> {
-    // The user performing the swap
     #[account(mut)]
     pub user: Signer<'info>,
 
-    // The AMM config that holds state (authority, fees, seeds, etc.)
+    // Config PDA =
+    //   seeds = ["config", seed.to_le_bytes()]
     #[account(
-        // This ensures we read the correct config by its seeds
-        seeds = [b"config", config.seed.to_le_bytes().as_ref()],
-        bump = config.config_bump,
+        seeds  = [b"config", config.seed.to_le_bytes().as_ref()],
+        bump   = config.config_bump,
         has_one = mint_x,
-        has_one = mint_y,      // You can also add constraints like `constraint = !config.locked`
+        has_one = mint_y
     )]
     pub config: Account<'info, Config>,
 
-    // The token mints for X and Y
     pub mint_x: Account<'info, Mint>,
     pub mint_y: Account<'info, Mint>,
 
-    // The vaults that hold X and Y for the pool
     #[account(
         mut,
         associated_token::mint = mint_x,
@@ -43,8 +42,6 @@ pub struct Swap<'info> {
     )]
     pub vault_y: Account<'info, TokenAccount>,
 
-    // The user's associated token accounts for X and Y
-    // Marked mut because we'll transfer tokens in/out
     #[account(
         mut,
         associated_token::mint = mint_x,
@@ -59,142 +56,132 @@ pub struct Swap<'info> {
     )]
     pub user_y: Account<'info, TokenAccount>,
 
-    // Programs needed for CPIs
     pub token_program: Program<'info, Token>,
     pub associated_token_program: Program<'info, AssociatedToken>,
     pub system_program: Program<'info, System>,
 }
 
-// This struct defines user parameters for a swap
-// You'd pass these as function parameters in your lib.rs
-pub struct SwapParams {
-    pub amount_in: u64,   // How many tokens the user is sending in
-    pub min_out: u64,     // The least they're willing to receive (slippage protection)
-    pub is_x_to_y: bool,  // true if swapping X->Y, false if Y->X
-}
-
+/* -------------------------------------------------------------------------- */
+/*                                   Logic                                    */
+/* -------------------------------------------------------------------------- */
 impl<'info> Swap<'info> {
-    pub fn process(&mut self, amount_in:u64,min_out:u64,is_x_to_y:bool) -> Result<()> {
-        // 1) Transfer amount_in from user -> the appropriate vault
+    pub fn process(
+        &mut self,
+        amount_in: u64,
+        min_out:   u64,
+        is_x_to_y: bool,
+    ) -> Result<()> {
+        /* -------- 1. move input tokens to vault -------------------------- */
         if is_x_to_y {
             self.transfer_in(&self.user_x, &self.vault_x, amount_in)?;
         } else {
             self.transfer_in(&self.user_y, &self.vault_y, amount_in)?;
         }
 
-        // 2) Compute out_amount using constant-product formula
-        let (dx_balance, dy_balance) = (self.vault_x.amount, self.vault_y.amount);
-        // A typical constant-product 'k' = X * Y
-        let k = dx_balance.checked_mul(dy_balance)
-            .ok_or_else(|| error!(ErrorCode::MathOverflow))?;
+        /* -------- 2. constant-product pricing ---------------------------- */
+        let (x_bal, y_bal) = (self.vault_x.amount as u128, self.vault_y.amount as u128);
+        let k              = x_bal.checked_mul(y_bal).ok_or(ErrorCode::MathOverflow)?;
 
-        // Apply fees – for example, user pays a fee on the input
-        let fee_bps = self.config.fees as u128; // or however you're storing fees
-        // e.g. if self.config.fees = 30 = 0.3% in basis points
-        let numerator = 10_000u128.checked_sub(fee_bps)
-            .ok_or_else(|| error!(ErrorCode::MathOverflow))?; 
-        let dx_in_with_fee = 
-            (amount_in as u128).checked_mul(numerator)
-            .ok_or_else(|| error!(ErrorCode::MathOverflow))? 
-            / 10_000u128; // scale for BPS
+        // fee (basis-points, e.g. 30 = 0.3 %)
+        let fee_bps = self.config.fees as u128;
+        let amount_in_u128 = amount_in as u128;
+        let amount_in_after_fee =
+            amount_in_u128.checked_mul(10_000 - fee_bps).ok_or(ErrorCode::MathOverflow)? / 10_000;
 
-        // Depending on direction:
-        // X->Y means 'X' goes up by dx_in_with_fee, so we recompute how much Y must go down
-        // Y->X is analogous but reversed
-        let (mut in_balance, mut out_balance) = (dx_balance as u128, dy_balance as u128);
+        // treat X → Y as canonical; if Y → X, swap balances for math
+        let (mut in_bal, mut out_bal) = (x_bal, y_bal);
         if !is_x_to_y {
-            // If we're actually Y->X, swap them for the math
-            (in_balance, out_balance) = (dy_balance as u128, dx_balance as u128);
+            core::mem::swap(&mut in_bal, &mut out_bal);
         }
 
-        let in_new = in_balance.checked_add(dx_in_with_fee)
-            .ok_or_else(|| error!(ErrorCode::MathOverflow))?;
-        // out_new = k / in_new
-        let out_new = k.checked_div(in_new)
-            .ok_or_else(|| error!(ErrorCode::MathOverflow))?;
+        // new invariant
+        let new_in  = in_bal.checked_add(amount_in_after_fee).ok_or(ErrorCode::MathOverflow)?;
+        let new_out = k.checked_div(new_in).ok_or(ErrorCode::MathOverflow)?;
+        let out_amt = out_bal.checked_sub(new_out).ok_or(ErrorCode::MathOverflow)?;
 
-        let out_amount = out_balance.checked_sub(out_new)
-            .ok_or_else(|| error!(ErrorCode::MathOverflow))?;
+        /* -------- 3. slippage guard -------------------------------------- */
+        require!(out_amt as u64 >= min_out, ErrorCode::SlippageTooHigh);
 
-        // 3) Slippage check – out_amount must be >= min_out or we fail
-        require!(
-            out_amount as u64 >= min_out,
-            ErrorCode::SlippageTooHigh
-        );
-
-        // 4) Transfer out_amount from the other vault to the user
-        let out_amount_u64 = out_amount as u64;  // safe if it fits in u64
+        /* -------- 4. pay user -------------------------------------------- */
+        let out_u64 = out_amt as u64;
         if is_x_to_y {
-            // vault_y -> user_y
-            self.transfer_out(&self.vault_y, &self.user_y, out_amount_u64)?;
+            self.transfer_out(&self.vault_y, &self.user_y, out_u64)?;
         } else {
-            // vault_x -> user_x
-            self.transfer_out(&self.vault_x, &self.user_x, out_amount_u64)?;
+            self.transfer_out(&self.vault_x, &self.user_x, out_u64)?;
         }
 
-        // That's basically it. Optionally track how many fees the program earned if desired
         Ok(())
     }
 
-    /// Transfer tokens from user to vault
+    /* --------------------- helper: user -> vault ------------------------ */
     fn transfer_in(
         &self,
         from: &Account<'info, TokenAccount>,
-        to: &Account<'info, TokenAccount>,
-        amount: u64
+        to:   &Account<'info, TokenAccount>,
+        amount: u64,
     ) -> Result<()> {
-        let cpi_ctx = CpiContext::new(
+        let ctx = CpiContext::new(
             self.token_program.to_account_info(),
             Transfer {
                 from: from.to_account_info(),
-                to: to.to_account_info(),
+                to:   to.to_account_info(),
                 authority: self.user.to_account_info(),
             },
         );
-        transfer(cpi_ctx, amount)?;
-        Ok(())
+        transfer(ctx, amount)
     }
 
-    /// Transfer tokens from vault to user
-    fn transfer_out(
-        &self,
-        from: &Account<'info, TokenAccount>,
-        to: &Account<'info, TokenAccount>,
-        amount: u64
-    ) -> Result<()> {
-        // Because the vault is owned by `config` (a PDA),
-        // we must sign with the config seeds. 
-        // That means we need 'config' seeds to sign CPIs.
+    /* --------------------- helper: vault -> user ------------------------ */
+   fn transfer_out(
+    &self,
+    from: &Account<'info, TokenAccount>,
+    to:   &Account<'info, TokenAccount>,
+    amount: u64,
+) -> Result<()> {
+    /* --------------------------------------------------------------
+     * 1. Put every dynamic piece in its own stack variable
+     *    so the borrow lives for the whole function body.
+     * -------------------------------------------------------------- */
+    let seed_bytes  = self.config.seed.to_le_bytes();       // [u8; 8]
+    let bump_bytes  = [self.config.config_bump];            // [u8; 1]
 
-        let seeds = &[
-            b"config",
-            &self.config.seed.to_le_bytes(),
-            &[self.config.config_bump],
-        ];
-        let signers = &[&seeds[..]];
+    /* --------------------------------------------------------------
+     * 2. Build the signer-seed array.
+     *    Using a `let` binding keeps it alive until the end
+     *    of this function, satisfying the borrow checker.
+     * -------------------------------------------------------------- */
+    let seeds: [&[u8]; 3] = [
+        b"config",          // &[u8; 6]   → &[u8]
+        &seed_bytes,        // &[u8; 8]   → &[u8]
+        &bump_bytes,        // &[u8; 1]   → &[u8]
+    ];
 
-        let cpi_ctx = CpiContext::new_with_signer(
-            self.token_program.to_account_info(),
-            Transfer {
-                from: from.to_account_info(),
-                to: to.to_account_info(),
-                // authority is the config, a PDA
-                authority: self.config.to_account_info(),
-            },
-            signers
-        );
+    // Anchor expects `&[&[&[u8]]]` (slice of seed groups).
+    // Here we have only one group, so wrap `&seeds` in another slice:
+    let signer_seeds: &[&[&[u8]]] = &[&seeds];
 
-        transfer(cpi_ctx, amount)?;
-        Ok(())
-    }
+    /* -------------------------------------------------------------- */
+    let cpi_ctx = CpiContext::new_with_signer(
+        self.token_program.to_account_info(),
+        Transfer {
+            from:      from.to_account_info(),
+            to:        to.to_account_info(),
+            authority: self.config.to_account_info(), // PDA owner
+        },
+        signer_seeds,
+    );
+
+    transfer(cpi_ctx, amount)
+}
 }
 
-// You might define some custom error codes for clarity
+/* -------------------------------------------------------------------------- */
+/*                                Error codes                                 */
+/* -------------------------------------------------------------------------- */
 #[error_code]
 pub enum ErrorCode {
-    #[msg("An integer overflow occurred in math calculations.")]
+    #[msg("Math overflow")]
     MathOverflow,
-    #[msg("Slippage too high; received fewer tokens than expected.")]
+    #[msg("Slippage too high")]
     SlippageTooHigh,
 }
-

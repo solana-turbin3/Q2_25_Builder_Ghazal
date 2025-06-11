@@ -1,0 +1,9 @@
+/Users/ghazalassadipour/Documents/GhazalApplications/marketplace/target/release/deps/libspl_discriminator_syn-a1176ddc782e7de5.rmeta: /Users/ghazalassadipour/.cargo/registry/src/index.crates.io-6f17d22bba15001f/spl-discriminator-syn-0.2.0/src/lib.rs /Users/ghazalassadipour/.cargo/registry/src/index.crates.io-6f17d22bba15001f/spl-discriminator-syn-0.2.0/src/error.rs /Users/ghazalassadipour/.cargo/registry/src/index.crates.io-6f17d22bba15001f/spl-discriminator-syn-0.2.0/src/parser.rs
+
+/Users/ghazalassadipour/Documents/GhazalApplications/marketplace/target/release/deps/libspl_discriminator_syn-a1176ddc782e7de5.rlib: /Users/ghazalassadipour/.cargo/registry/src/index.crates.io-6f17d22bba15001f/spl-discriminator-syn-0.2.0/src/lib.rs /Users/ghazalassadipour/.cargo/registry/src/index.crates.io-6f17d22bba15001f/spl-discriminator-syn-0.2.0/src/error.rs /Users/ghazalassadipour/.cargo/registry/src/index.crates.io-6f17d22bba15001f/spl-discriminator-syn-0.2.0/src/parser.rs
+
+/Users/ghazalassadipour/Documents/GhazalApplications/marketplace/target/release/deps/spl_discriminator_syn-a1176ddc782e7de5.d: /Users/ghazalassadipour/.cargo/registry/src/index.crates.io-6f17d22bba15001f/spl-discriminator-syn-0.2.0/src/lib.rs /Users/ghazalassadipour/.cargo/registry/src/index.crates.io-6f17d22bba15001f/spl-discriminator-syn-0.2.0/src/error.rs /Users/ghazalassadipour/.cargo/registry/src/index.crates.io-6f17d22bba15001f/spl-discriminator-syn-0.2.0/src/parser.rs
+
+/Users/ghazalassadipour/.cargo/registry/src/index.crates.io-6f17d22bba15001f/spl-discriminator-syn-0.2.0/src/lib.rs:
+/Users/ghazalassadipour/.cargo/registry/src/index.crates.io-6f17d22bba15001f/spl-discriminator-syn-0.2.0/src/error.rs:
+/Users/ghazalassadipour/.cargo/registry/src/index.crates.io-6f17d22bba15001f/spl-discriminator-syn-0.2.0/src/parser.rs:
